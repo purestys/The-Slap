@@ -16,7 +16,7 @@ export async function refreshBadge() {
 // ============ Autenticação ====================================================
 const authCard = (title, sub, body) => html`
   <div class="card auth-card">
-    <div class="logo">${icon('logo')}<span>TheClick</span></div>
+    <div class="logo">${icon('logo')}<span>The Slap</span></div>
     <h1>${title}</h1><p class="sub">${sub}</p>${body}
   </div>`;
 
@@ -215,7 +215,7 @@ export function newPost(el) {
         <small class="err" data-err="video"></small>
         <small class="err" data-err="images"></small>
         ${field('title', 'Título', { attrs: 'required maxlength="100"' })}
-          ${textarea('caption', 'Legenda', { attrs: 'maxlength="2000" placeholder="Conte oque está pensando"' })}
+        ${textarea('caption', 'Legenda', { attrs: 'maxlength="2000" placeholder="Conte a história por trás do clique"' })}
         <label class="check"><input type="checkbox" name="is_sensitive"> Esta publicação contém mídia sensível</label>
         <label class="field"><span>Feeling</span><input type="text" name="mood" placeholder="Como você está se sentindo? (opcional)" autocomplete="off"></label>
         ${field('tags', 'Hashtags', { attrs: 'placeholder="#paisagem #pordosol"' })}
@@ -507,7 +507,7 @@ export function settings(el) {
         <h2 class="h-sp">Privacidade e segurança</h2>
         <p class="hint">Controle como as pessoas encontram seu perfil e veem suas publicações.</p>
         <label class="privacy-option"><span><b>Perfil privado</b><small>Somente seguidores podem visualizar suas publicações.</small></span><input type="checkbox" name="is_private" ${me.is_private ? 'checked' : ''}></label>
-        <label class="privacy-option"><span><b>Mostrar meu perfil na busca</b><small>Permite que outras pessoas encontrem seu perfil ao pesquisar no TheClick.</small></span><input type="checkbox" name="show_in_search" ${me.show_in_search !== false ? 'checked' : ''}></label>
+        <label class="privacy-option"><span><b>Mostrar meu perfil na busca</b><small>Permite que outras pessoas encontrem seu perfil ao pesquisar no The Slap.</small></span><input type="checkbox" name="show_in_search" ${me.show_in_search !== false ? 'checked' : ''}></label>
         <label class="privacy-option"><span><b>Exibir mídia sensível</b><small>Permite exibir mídias que possam conter conteúdo sensível sem aviso adicional.</small></span><input type="checkbox" name="show_sensitive_media" ${me.show_sensitive_media ? 'checked' : ''}></label>
         <label class="privacy-option"><span><b>Receber notificações</b><small>Ativa notificações de curtidas, comentários e novos seguidores.</small></span><input type="checkbox" name="notifications_enabled" ${me.notifications_enabled !== false ? 'checked' : ''}></label>
         <button class="btn" type="submit">Salvar privacidade</button>
