@@ -93,7 +93,7 @@ async function sniffImage(file) {
 const MIME = { jpg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
 
 async function uploadImage(bucket, file, uid, maxMb, field) {
-  if (file.size > maxMb * 1024 * 1024) throw bad('Corrija os campos destacados.', { [field]: `A imagem excede ${maxMb} MB.` });
+  if (Number.isFinite(maxMb) && file.size > maxMb * 1024 * 1024) throw bad('Corrija os campos destacados.', { [field]: `A imagem excede ${maxMb} MB.` });
   const ext = await sniffImage(file);
   if (!ext) throw bad('Corrija os campos destacados.', { [field]: 'Arquivo inválido. Use JPG, PNG, WEBP ou GIF.' });
   const path = `${uid}/${crypto.randomUUID()}.${ext}`;
@@ -250,8 +250,7 @@ export const posts = {
     return rows[0];
   },
 
-  async create({ file, title, caption, tags }, uid) {
-    if (!file || !file.size) throw bad('Selecione uma fotografia.', { image: 'Escolha uma imagem JPG, PNG, WEBP ou GIF.' });
+  async create({ file, title, caption, tags, mood }, uid) {
     title = String(title || '').trim();
     caption = String(caption || '').trim();
     const f = {};
@@ -259,13 +258,13 @@ export const posts = {
     if (caption.length > 2000) f.caption = 'A legenda pode ter até 2000 caracteres.';
     if (Object.keys(f).length) throw bad('Corrija os campos destacados.', f);
 
-    const up = await uploadImage('posts', file, uid, 8, 'image');
+    const up = file && file.size ? await uploadImage('posts', file, uid, Infinity, 'image') : null;
     try {
       return await rpc('create_post', {
-        p_image_url: up.url, p_title: title, p_caption: caption, p_tags: extractHashtags(caption, tags),
+        p_image_url: up?.url || null, p_title: title, p_caption: caption, p_tags: extractHashtags(caption, tags), p_mood: mood || null,
       });
     } catch (err) {
-      await sb.storage.from('posts').remove([up.path]).catch(() => {});
+      if (up) await sb.storage.from('posts').remove([up.path]).catch(() => {});
       throw err;
     }
   },
