@@ -4,5 +4,5 @@
 // SUPABASE_ANON_KEY: chave pública anon (JWT) ou publishable (sb_publishable_...).
 // NUNCA use a chave secret/service_role no navegador.
 
-export const SUPABASE_URL = 'https://wkpebdwedjbkhmnucmvj.supabase.co/rest/v1/';
+export const SUPABASE_URL = 'https://wkpebdwedjbkhmnucmvj.supabase.co';
 export const SUPABASE_ANON_KEY = 'sb_publishable_23qMFYulfvknbYwzgO9WnQ_yRq20hEd';
