@@ -1,0 +1,200 @@
+import { posts, comments, profile } from './api.js';
+import { state } from './state.js';
+import { $, $$, html, raw, icon, avatar, timeAgo, richText, toast, go } from './util.js';
+
+// ---- Formulários --------------------------------------------------------------
+export const field = (name, label, o = {}) => html`
+  <label class="field"><span>${label}</span>
+    <input name="${name}" type="${o.type || 'text'}" value="${o.value || ''}" ${raw(o.attrs || '')}>
+    <small class="err" data-err="${name}"></small></label>`;
+
+export const textarea = (name, label, o = {}) => html`
+  <label class="field"><span>${label}</span>
+    <textarea name="${name}" ${raw(o.attrs || '')}>${o.value || ''}</textarea>
+    <small class="err" data-err="${name}"></small></label>`;
+
+export function showErrors(form, message, fields = {}) {
+  const box = $('.form-error', form);
+  if (box) { box.textContent = message || ''; box.hidden = !message; }
+  $$('[data-err]', form).forEach((el) => { el.textContent = (fields && fields[el.dataset.err]) || ''; });
+}
+
+export function bindForm(form, handler) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('[type=submit]', form);
+    showErrors(form, '');
+    btn.disabled = true;
+    try {
+      await handler(new FormData(form));
+    } catch (err) {
+      showErrors(form, err.message, err.fields);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+// Prévia de imagem + validação de formato e tamanho no navegador.
+export function bindImagePicker(input, onPick, maxMb) {
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
+      input.value = '';
+      return toast('Formato inválido. Use JPG, PNG, WEBP ou GIF.', 'error');
+    }
+    if (file.size > maxMb * 1024 * 1024) {
+      input.value = '';
+      return toast(`A imagem excede ${maxMb} MB.`, 'error');
+    }
+    onPick(URL.createObjectURL(file));
+  });
+}
+
+// ---- Listas paginadas -----------------------------------------------------------
+export async function paged({ list, more, fetchPage, render }) {
+  let page = 1;
+  const load = async () => {
+    const r = await fetchPage(page);
+    const out = render(r.items);
+    list.insertAdjacentHTML('beforeend', (Array.isArray(out) ? out : [out]).map((x) => x.s).join(''));
+    more.hidden = !r.hasMore;
+    return r;
+  };
+  more.addEventListener('click', async () => {
+    page += 1;
+    more.disabled = true;
+    try { await load(); } catch (e) { page -= 1; toast(e.message, 'error'); }
+    more.disabled = false;
+  });
+  return load();
+}
+
+// ---- Cartões -------------------------------------------------------------------
+export const likeBtn = (p) => html`
+  <button class="act ${p.liked ? 'on' : ''}" data-action="like" data-id="${p.id}" aria-pressed="${p.liked}" aria-label="Curtir">
+    ${icon('heart')}<span class="count">${p.likes_count}</span></button>`;
+
+export const hashtagLinks = (p) => (p.hashtags.length
+  ? html`<div class="tags">${p.hashtags.map((t) => html`<a href="#/explore?q=%23${encodeURIComponent(t)}">#${t}</a>`)}</div>`
+  : '');
+
+export const postCard = (p) => html`
+  <article class="card post">
+    <div class="post-head">
+      <a href="#/u/${p.username}">${avatar(p)}</a>
+      <div><a class="name" href="#/u/${p.username}">${p.name}</a>
+        <small>@${p.username} · ${timeAgo(p.created_at)}</small></div>
+    </div>
+    <a class="post-img" href="#/post/${p.id}"><img src="${p.image_url}" alt="${p.title}" loading="lazy"></a>
+    <div class="post-body">
+      <h3>${p.title}</h3>
+      ${p.caption ? html`<p class="caption">${richText(p.caption)}</p>` : ''}
+      ${hashtagLinks(p)}
+    </div>
+    <div class="post-actions">
+      ${likeBtn(p)}
+      <a class="act" href="#/post/${p.id}" aria-label="Comentar">${icon('comment')}<span>${p.comments_count}</span></a>
+      <button class="act right" data-action="share" data-id="${p.id}" aria-label="Compartilhar">${icon('share')}</button>
+    </div>
+  </article>`;
+
+export const galleryItem = (p) => html`
+  <a class="g-item" href="#/post/${p.id}" title="${p.title}">
+    <img src="${p.image_url}" alt="${p.title}" loading="lazy">
+    <span class="g-over"><span>♥ ${p.likes_count}</span><span>💬 ${p.comments_count}</span></span>
+  </a>`;
+
+export const followBtn = (username, isFollowing) => html`
+  <button class="btn sm ${isFollowing ? 'ghost' : ''}" data-action="follow" data-username="${username}" data-following="${isFollowing ? 1 : 0}">
+    ${isFollowing ? 'Seguindo' : 'Seguir'}</button>`;
+
+export const personRow = (u) => html`
+  <div class="person">
+    <a href="#/u/${u.username}">${avatar(u)}</a>
+    <div class="who"><a class="name" href="#/u/${u.username}">${u.name}</a><small>@${u.username}</small></div>
+    ${u.id !== state.me.id ? followBtn(u.username, !!u.is_following) : ''}
+  </div>`;
+
+// ---- Ações globais (delegação de eventos) -----------------------------------------
+const actions = {
+  async like(el) {
+    const id = el.dataset.id;
+    const r = await posts.like(id, !el.classList.contains('on'));
+    $$(`[data-action="like"][data-id="${id}"]`).forEach((b) => {
+      b.classList.toggle('on', r.liked);
+      b.setAttribute('aria-pressed', r.liked);
+      $('.count', b).textContent = r.likes_count;
+    });
+  },
+
+  async share(el) {
+    const url = `${location.origin}${location.pathname}#/post/${el.dataset.id}`;
+    try {
+      if (navigator.share) await navigator.share({ title: 'TheClick', url });
+      else { await navigator.clipboard.writeText(url); toast('Link copiado.'); }
+    } catch (e) {
+      if (e.name !== 'AbortError') toast('Não foi possível compartilhar.', 'error');
+    }
+  },
+
+  async follow(el) {
+    const u = el.dataset.username;
+    const r = await profile.follow(u, el.dataset.following !== '1');
+    $$(`[data-action="follow"][data-username="${u}"]`).forEach((b) => {
+      b.dataset.following = r.is_following ? 1 : 0;
+      b.textContent = r.is_following ? 'Seguindo' : 'Seguir';
+      b.classList.toggle('ghost', r.is_following);
+    });
+    const counter = $(`[data-followers-of="${u}"]`);
+    if (counter) counter.textContent = r.followers_count;
+  },
+
+  async 'delete-post'(el) {
+    if (!confirm('Excluir esta publicação? Curtidas e comentários também serão apagados.')) return;
+    await posts.remove(el.dataset.id);
+    toast('Publicação excluída.');
+    go(`#/u/${state.me.username}`);
+  },
+
+  'toggle-edit'() {
+    $('#post-view').hidden = !$('#post-view').hidden;
+    $('#post-edit').hidden = !$('#post-edit').hidden;
+  },
+
+  reply(el) {
+    const form = $('#comment-form');
+    form.elements.parent_comment_id.value = el.dataset.id;
+    $('#replying-name').textContent = '@' + el.dataset.username;
+    $('#replying').hidden = false;
+    const ta = form.elements.content;
+    if (!ta.value) ta.value = `@${el.dataset.username} `;
+    ta.focus();
+  },
+
+  'cancel-reply'() {
+    const form = $('#comment-form');
+    form.elements.parent_comment_id.value = '';
+    $('#replying').hidden = true;
+  },
+
+  async 'delete-comment'(el) {
+    if (!confirm('Excluir este comentário? As respostas dele também serão removidas.')) return;
+    await comments.remove(el.dataset.id);
+    document.dispatchEvent(new CustomEvent('comments:changed'));
+  },
+};
+
+export function initActions() {
+  document.addEventListener('click', async (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el || !actions[el.dataset.action]) return;
+    try {
+      await actions[el.dataset.action](el, e);
+    } catch (err) {
+      if (err.status === 401) go('#/login');
+      else toast(err.message, 'error');
+    }
+  });
+}
