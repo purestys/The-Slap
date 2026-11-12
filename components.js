@@ -36,7 +36,7 @@ export function bindForm(form, handler) {
 }
 
 // Prévia de imagem + validação de formato e tamanho no navegador.
-export function bindImagePicker(input, onPick, maxMb) {
+export function bindImagePicker(input, onPick, maxMb = Infinity) {
   input.addEventListener('change', () => {
     const file = input.files[0];
     if (!file) return;
@@ -87,8 +87,9 @@ export const postCard = (p) => html`
       <div><a class="name" href="#/u/${p.username}">${p.name}</a>
         <small>@${p.username} · ${timeAgo(p.created_at)}</small></div>
     </div>
-    <a class="post-img" href="#/post/${p.id}"><img src="${p.image_url}" alt="${p.title}" loading="lazy"></a>
+    ${p.image_url ? html`<a class="post-img" href="#/post/${p.id}"><img src="${p.image_url}" alt="${p.title}" loading="lazy"></a>` : ''}
     <div class="post-body">
+      ${p.mood ? html`<span class="mood">${p.mood}</span>` : ''}
       <h3>${p.title}</h3>
       ${p.caption ? html`<p class="caption">${richText(p.caption)}</p>` : ''}
       ${hashtagLinks(p)}
@@ -100,11 +101,11 @@ export const postCard = (p) => html`
     </div>
   </article>`;
 
-export const galleryItem = (p) => html`
+export const galleryItem = (p) => p.image_url ? html`
   <a class="g-item" href="#/post/${p.id}" title="${p.title}">
     <img src="${p.image_url}" alt="${p.title}" loading="lazy">
     <span class="g-over"><span>♥ ${p.likes_count}</span><span>💬 ${p.comments_count}</span></span>
-  </a>`;
+  </a>` : '';
 
 export const followBtn = (username, isFollowing) => html`
   <button class="btn sm ${isFollowing ? 'ghost' : ''}" data-action="follow" data-username="${username}" data-following="${isFollowing ? 1 : 0}">
