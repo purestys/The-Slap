@@ -112,8 +112,24 @@ const removeFile = async (bucket, url) => {
   if (path) await sb.storage.from(bucket).remove([path]).catch(() => {});
 };
 
+async function signPostRows(rows) {
+  const source = (rows || []).map((row) => ({
+    ...row,
+    image_urls: row.image_urls?.length ? row.image_urls : (row.image_url ? [row.image_url] : []),
+  }));
+  const paths = [...new Set(source.flatMap((row) => row.image_urls.map((url) => storagePath(url, 'posts')).filter(Boolean)))];
+  if (!paths.length) return source.map((row) => ({ ...row, image_url: null, image_urls: [] }));
+  const { data, error } = await sb.storage.from('posts').createSignedUrls(paths, 3600);
+  if (error) throw fail(error);
+  const signed = new Map((data || []).map((item) => [item.path, item.signedUrl]));
+  return source.map((row) => {
+    const urls = row.image_urls.map((url) => signed.get(storagePath(url, 'posts'))).filter(Boolean);
+    return { ...row, image_urls: urls, image_url: urls[0] || null };
+  });
+}
+
 // ---- Autenticação ---------------------------------------------------------------
-const PROFILE_COLS = 'id, name, username, profile_picture, bio, created_at';
+const PROFILE_COLS = 'id, name, username, profile_picture, bio, created_at, is_private, show_in_search, show_sensitive_media, notifications_enabled';
 
 async function loadMe(user) {
   const { data, error } = await sb.from('profiles').select(PROFILE_COLS).eq('id', user.id).maybeSingle();
@@ -241,30 +257,36 @@ export const posts = {
       p_scope: scope, p_user_id: userId, p_tag: tag, p_search: search, p_sort: sort,
       p_limit: limit + 1, p_offset: (pg - 1) * limit,
     });
-    return page(rows, limit);
+    return page(await signPostRows(rows), limit);
   },
 
   async get(id) {
     const rows = await rpc('list_posts', { p_post_id: Number(id), p_limit: 1 });
     if (!rows[0]) throw Object.assign(new Error('Publicação não encontrada.'), { fromApi: true, status: 404 });
-    return rows[0];
+    return (await signPostRows(rows))[0];
   },
 
-  async create({ file, title, caption, tags, mood }, uid) {
+  async create({ files = [], file = null, title, caption, tags, mood, is_sensitive = false }, uid) {
     title = String(title || '').trim();
     caption = String(caption || '').trim();
+    const selected = [...(files || [])];
+    if (!selected.length && file && file.size) selected.push(file);
     const f = {};
     if (!title || title.length > 100) f.title = 'Dê um título de até 100 caracteres.';
     if (caption.length > 2000) f.caption = 'A legenda pode ter até 2000 caracteres.';
+    if (selected.length > 4) f.images = 'Escolha no máximo 4 fotos por publicação.';
     if (Object.keys(f).length) throw bad('Corrija os campos destacados.', f);
 
-    const up = file && file.size ? await uploadImage('posts', file, uid, Infinity, 'image') : null;
+    const uploaded = [];
     try {
+      for (const image of selected) uploaded.push(await uploadImage('posts', image, uid, Infinity, 'images'));
       return await rpc('create_post', {
-        p_image_url: up?.url || null, p_title: title, p_caption: caption, p_tags: extractHashtags(caption, tags), p_mood: mood || null,
+        p_image_url: uploaded[0]?.url || null,
+        p_title: title, p_caption: caption, p_tags: extractHashtags(caption, tags), p_mood: mood || null,
+        p_image_urls: uploaded.map((item) => item.url), p_is_sensitive: !!is_sensitive,
       });
     } catch (err) {
-      if (up) await sb.storage.from('posts').remove([up.path]).catch(() => {});
+      if (uploaded.length) await sb.storage.from('posts').remove(uploaded.map((item) => item.path)).catch(() => {});
       throw err;
     }
   },
@@ -276,8 +298,8 @@ export const posts = {
   },
 
   async remove(id) {
-    const url = await rpc('delete_post', { p_id: Number(id) });
-    await removeFile('posts', url);
+    const urls = await rpc('delete_post', { p_id: Number(id) });
+    for (const url of (Array.isArray(urls) ? urls : [urls])) await removeFile('posts', url);
   },
 
   async like(id, liked) {
@@ -338,6 +360,14 @@ export const profile = {
     }
   },
 
+  async savePrivacy(values) {
+    const row = first(await rpc('update_privacy_settings', {
+      p_is_private: !!values.is_private, p_show_in_search: !!values.show_in_search,
+      p_show_sensitive_media: !!values.show_sensitive_media, p_notifications_enabled: !!values.notifications_enabled,
+    }));
+    return row;
+  },
+
   suggestions: () => rpc('suggested_users'),
 };
 
@@ -359,7 +389,11 @@ export const explore = {
 
 // ---- Notificações ---------------------------------------------------------------
 export const notifications = {
-  list: () => rpc('list_notifications'),
+  async list() {
+    const rows = await rpc('list_notifications');
+    const signed = await signPostRows(rows.map((row) => ({ ...row, image_url: row.post_image, image_urls: row.post_image ? [row.post_image] : [] })));
+    return rows.map((row, index) => ({ ...row, post_image: signed[index]?.image_url || null }));
+  },
   unreadCount: async () => Number(await rpc('unread_count')) || 0,
   markRead: (id) => rpc('mark_notifications_read', { p_id: Number(id) }),
   markAllRead: () => rpc('mark_notifications_read', {}),
