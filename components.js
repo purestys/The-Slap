@@ -133,7 +133,7 @@ const actions = {
   async share(el) {
     const url = `${location.origin}${location.pathname}#/post/${el.dataset.id}`;
     try {
-      if (navigator.share) await navigator.share({ title: 'TheClick', url });
+      if (navigator.share) await navigator.share({ title: 'The Slap', url });
       else { await navigator.clipboard.writeText(url); toast('Link copiado.'); }
     } catch (e) {
       if (e.name !== 'AbortError') toast('Não foi possível compartilhar.', 'error');
