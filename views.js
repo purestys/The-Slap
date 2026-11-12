@@ -215,7 +215,7 @@ export function newPost(el) {
         <small class="err" data-err="video"></small>
         <small class="err" data-err="images"></small>
         ${field('title', 'Título', { attrs: 'required maxlength="100"' })}
-        ${textarea('caption', 'Legenda', { attrs: 'maxlength="2000" placeholder="Conte a história por trás do clique"' })}
+          ${textarea('caption', 'Legenda', { attrs: 'maxlength="2000" placeholder="Conte oque está pensando"' })}
         <label class="check"><input type="checkbox" name="is_sensitive"> Esta publicação contém mídia sensível</label>
         <label class="field"><span>Feeling</span><input type="text" name="mood" placeholder="Como você está se sentindo? (opcional)" autocomplete="off"></label>
         ${field('tags', 'Hashtags', { attrs: 'placeholder="#paisagem #pordosol"' })}
