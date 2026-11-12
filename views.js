@@ -3,7 +3,6 @@ import { isRecovery } from './supabase.js';
 import { state } from './state.js';
 import { $, $$, html, raw, mount, icon, avatar, timeAgo, richText, toast, go } from './util.js';
 import { field, textarea, bindForm, bindImagePicker, paged, postCard, galleryItem, personRow, followBtn, likeBtn, hashtagLinks } from './components.js';
-import { toggleTheme, currentTheme } from './theme.js';
 
 const errBox = html`<div class="form-error" role="alert" hidden></div>`;
 
@@ -204,13 +203,14 @@ export function newPost(el) {
       <div class="page-head"><h1>Publicar fotografia</h1></div>
       <form class="card pad" id="f" enctype="multipart/form-data">${errBox}
         <label class="drop" id="drop">
-          <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" required>
-          <span id="drop-empty">${icon('image')}<strong>Escolher fotografia</strong><br><span class="hint">JPG, PNG, WEBP ou GIF · até 8 MB</span></span>
+          <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
+          <span id="drop-empty">${icon('image')}<strong>Escolher fotografia (opcional)</strong><br><span class="hint">JPG, PNG, WEBP ou GIF · você também pode publicar só texto</span></span>
           <img id="preview" alt="Prévia da fotografia" hidden>
         </label>
         <small class="err" data-err="image"></small>
         ${field('title', 'Título', { attrs: 'required maxlength="100"' })}
         ${textarea('caption', 'Legenda', { attrs: 'maxlength="2000" placeholder="Conte a história por trás do clique"' })}
+        <label class="field"><span>Mood</span><select name="mood"><option value="">Sem mood</option><option>Feliz</option><option>Animado(a)</option><option>Triste</option><option>Pensativo(a)</option><option>Grato(a)</option><option>Com saudade</option><option>Inspirado(a)</option><option>Tranquilo(a)</option><option>Cansado(a)</option></select></label>
         ${field('tags', 'Hashtags', { attrs: 'placeholder="#paisagem #pordosol"' })}
         <button class="btn block" type="submit">Publicar</button>
       </form>
@@ -218,10 +218,10 @@ export function newPost(el) {
   const form = $('#f', el);
   bindImagePicker(form.elements.image, (url) => {
     $('#preview', el).src = url; $('#preview', el).hidden = false; $('#drop-empty', el).hidden = true;
-  }, 8);
+  });
   bindForm(form, async (fd) => {
     const id = await API.posts.create({
-      file: fd.get('image'), title: fd.get('title'), caption: fd.get('caption'), tags: fd.get('tags'),
+      file: fd.get('image'), title: fd.get('title'), caption: fd.get('caption'), tags: fd.get('tags'), mood: fd.get('mood'),
     }, state.me.id);
     toast('Publicado!');
     go(`#/post/${id}`);
@@ -257,7 +257,7 @@ export async function postPage(el, ctx) {
   const mine = p.user_id === state.me.id;
   mount(el, html`
     <div class="col-wide post-page">
-      <div class="media"><img src="${p.image_url}" alt="${p.title}"></div>
+      ${p.image_url ? html`<div class="media"><img src="${p.image_url}" alt="${p.title}"></div>` : ''}
       <aside class="card side-panel">
         <div class="post-head">
           <a href="#/u/${p.username}">${avatar(p)}</a>
@@ -266,6 +266,7 @@ export async function postPage(el, ctx) {
             <button class="link danger" data-action="delete-post" data-id="${p.id}">Excluir</button></div>` : ''}
         </div>
         <div class="post-body" id="post-view">
+          ${p.mood ? html`<span class="mood">${p.mood}</span>` : ''}
           <h2>${p.title}</h2>
           ${p.caption ? html`<p class="caption">${richText(p.caption)}</p>` : ''}
           ${hashtagLinks(p)}
@@ -425,9 +426,10 @@ export function settings(el) {
         ${field('new_password', 'Nova senha (mín. 8 caracteres)', { type: 'password', attrs: 'required minlength="8" autocomplete="new-password"' })}
         <button class="btn" type="submit">Alterar senha</button>
       </form>
-      <div class="card pad row">
-        <button class="btn ghost" data-action="toggle-theme">${icon(currentTheme() === 'dark' ? 'sun' : 'moon')} Alternar modo claro/escuro</button>
-        <button class="btn danger" data-action="logout">${icon('logout')} Sair da conta</button>
+      <div class="card pad mb settings-actions">
+        <h2 class="h-sp">Conta</h2>
+        <p class="muted">Ao sair, você precisará entrar novamente para acessar seu perfil.</p>
+        <button class="btn danger" type="button" data-action="logout">${icon('logout')} Sair da conta</button>
       </div>
     </div>`);
   const form = $('#profile', el);
