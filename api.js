@@ -91,6 +91,17 @@ async function sniffImage(file) {
   return null;
 }
 const MIME = { jpg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+const VIDEO_MIME = { mp4: 'video/mp4', webm: 'video/webm', ogg: 'video/ogg' };
+
+async function uploadVideo(bucket, file, uid) {
+  const type = String(file.type || '').toLowerCase();
+  const ext = Object.keys(VIDEO_MIME).find((key) => VIDEO_MIME[key] === type);
+  if (!ext) throw bad('Corrija os campos destacados.', { video: 'Arquivo inválido. Use MP4, WEBM ou OGG.' });
+  const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await sb.storage.from(bucket).upload(path, file, { contentType: VIDEO_MIME[ext], cacheControl: '31536000' });
+  if (error) throw fail(error);
+  return { path, url: sb.storage.from(bucket).getPublicUrl(path).data.publicUrl };
+}
 
 async function uploadImage(bucket, file, uid, maxMb, field) {
   if (Number.isFinite(maxMb) && file.size > maxMb * 1024 * 1024) throw bad('Corrija os campos destacados.', { [field]: `A imagem excede ${maxMb} MB.` });
@@ -117,14 +128,18 @@ async function signPostRows(rows) {
     ...row,
     image_urls: row.image_urls?.length ? row.image_urls : (row.image_url ? [row.image_url] : []),
   }));
-  const paths = [...new Set(source.flatMap((row) => row.image_urls.map((url) => storagePath(url, 'posts')).filter(Boolean)))];
-  if (!paths.length) return source.map((row) => ({ ...row, image_url: null, image_urls: [] }));
+  const paths = [...new Set(source.flatMap((row) => [
+    ...row.image_urls.map((url) => storagePath(url, 'posts')),
+    storagePath(row.video_url, 'posts'),
+  ].filter(Boolean)))];
+  if (!paths.length) return source.map((row) => ({ ...row, image_url: null, image_urls: [], video_url: null }));
   const { data, error } = await sb.storage.from('posts').createSignedUrls(paths, 3600);
   if (error) throw fail(error);
   const signed = new Map((data || []).map((item) => [item.path, item.signedUrl]));
   return source.map((row) => {
     const urls = row.image_urls.map((url) => signed.get(storagePath(url, 'posts'))).filter(Boolean);
-    return { ...row, image_urls: urls, image_url: urls[0] || null };
+    const videoPath = storagePath(row.video_url, 'posts');
+    return { ...row, image_urls: urls, image_url: urls[0] || null, video_url: videoPath ? (signed.get(videoPath) || null) : null };
   });
 }
 
@@ -266,7 +281,7 @@ export const posts = {
     return (await signPostRows(rows))[0];
   },
 
-  async create({ files = [], file = null, title, caption, tags, mood, is_sensitive = false }, uid) {
+  async create({ files = [], file = null, video = null, title, caption, tags, mood, is_sensitive = false }, uid) {
     title = String(title || '').trim();
     caption = String(caption || '').trim();
     const selected = [...(files || [])];
@@ -275,18 +290,24 @@ export const posts = {
     if (!title || title.length > 100) f.title = 'Dê um título de até 100 caracteres.';
     if (caption.length > 2000) f.caption = 'A legenda pode ter até 2000 caracteres.';
     if (selected.length > 4) f.images = 'Escolha no máximo 4 fotos por publicação.';
+    if (selected.length && video) f.video = 'Escolha até 4 fotos ou 1 vídeo por publicação.';
+    if (video && !/^video\/(mp4|webm|ogg)$/.test(String(video.type || '').toLowerCase())) f.video = 'Use um vídeo MP4, WEBM ou OGG.';
     if (Object.keys(f).length) throw bad('Corrija os campos destacados.', f);
 
     const uploaded = [];
+    let uploadedVideo = null;
     try {
       for (const image of selected) uploaded.push(await uploadImage('posts', image, uid, Infinity, 'images'));
+      if (video) uploadedVideo = await uploadVideo('posts', video, uid);
       return await rpc('create_post', {
         p_image_url: uploaded[0]?.url || null,
         p_title: title, p_caption: caption, p_tags: extractHashtags(caption, tags), p_mood: mood || null,
         p_image_urls: uploaded.map((item) => item.url), p_is_sensitive: !!is_sensitive,
+        p_video_url: uploadedVideo?.url || null,
       });
     } catch (err) {
       if (uploaded.length) await sb.storage.from('posts').remove(uploaded.map((item) => item.path)).catch(() => {});
+      if (uploadedVideo) await sb.storage.from('posts').remove([uploadedVideo.path]).catch(() => {});
       throw err;
     }
   },
