@@ -87,7 +87,7 @@ export const postCard = (p) => html`
       <div><a class="name" href="#/u/${p.username}">${p.name}</a>
         <small>@${p.username} · ${timeAgo(p.created_at)}</small></div>
     </div>
-    ${p.image_url ? html`<a class="post-img" href="#/post/${p.id}"><img src="${p.image_url}" alt="${p.title}" loading="lazy"></a>` : ''}
+    ${(p.image_urls?.length ? p.image_urls : (p.image_url ? [p.image_url] : [])).length ? (p.is_sensitive && !state.me?.show_sensitive_media ? html`<a class="sensitive-cover" href="#/post/${p.id}"><b>Mídia sensível</b><span>Abra a publicação para visualizar ou altere sua preferência nas configurações.</span></a>` : html`<a class="post-img post-gallery count-${(p.image_urls?.length || (p.image_url ? 1 : 0))}" href="#/post/${p.id}">${(p.image_urls?.length ? p.image_urls : [p.image_url]).slice(0,4).map((url) => html`<img src="${url}" alt="${p.title}" loading="lazy" decoding="async">`)}</a>`) : ''}
     <div class="post-body">
       ${p.mood ? html`<span class="mood">${p.mood}</span>` : ''}
       <h3>${p.title}</h3>
@@ -103,7 +103,7 @@ export const postCard = (p) => html`
 
 export const galleryItem = (p) => p.image_url ? html`
   <a class="g-item" href="#/post/${p.id}" title="${p.title}">
-    <img src="${p.image_url}" alt="${p.title}" loading="lazy">
+    <img src="${p.image_url}" alt="${p.title}" loading="lazy" decoding="async">
     <span class="g-over"><span>♥ ${p.likes_count}</span><span>💬 ${p.comments_count}</span></span>
   </a>` : '';
 
