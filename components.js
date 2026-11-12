@@ -103,14 +103,18 @@ export const postCard = (p) => html`
 
 export const galleryItem = (p) => {
   const image = p.image_url || p.image_urls?.[0] || null;
-  if (!image && !p.video_url) return '';
   const sensitive = p.is_sensitive && !state.me?.show_sensitive_media;
+  const hasMedia = Boolean(image || p.video_url);
   return html`
-    <a class="g-item profile-post-tile ${p.video_url ? 'is-video' : ''} ${sensitive ? 'is-sensitive' : ''}" href="#/post/${p.id}" title="${p.title}" aria-label="Abrir publicação: ${p.title}">
-      ${sensitive ? html`<span class="profile-sensitive">Mídia sensível</span>` : (p.video_url
-        ? html`<video src="${p.video_url}" muted playsinline preload="metadata" aria-label="Prévia do vídeo"></video><span class="profile-video-mark" aria-hidden="true">▶</span>`
-        : html`<img src="${image}" alt="${p.title}" loading="lazy" decoding="async">`)}
-      <span class="g-over"><span>♥ ${p.likes_count}</span><span>💬 ${p.comments_count}</span></span>
+    <a class="g-item profile-post-tile ${p.video_url ? 'is-video' : ''} ${!hasMedia ? 'is-text-post' : ''} ${sensitive ? 'is-sensitive' : ''}" href="#/post/${p.id}" title="${p.title || 'Publicação'}" aria-label="Abrir publicação: ${p.title || 'Publicação'}">
+      ${sensitive
+        ? html`<span class="profile-sensitive">Mídia sensível</span>`
+        : (p.video_url
+          ? html`<video src="${p.video_url}" muted playsinline preload="metadata" aria-label="Prévia do vídeo"></video><span class="profile-video-mark" aria-hidden="true">▶</span>`
+          : (image
+            ? html`<img src="${image}" alt="${p.title || 'Foto da publicação'}" loading="lazy" decoding="async">`
+            : html`<span class="profile-text-post-content"><b>▧</b><strong>${p.title || 'Publicação'}</strong><small>${p.caption || 'Ver publicação'}</small></span>`))}
+      <span class="g-over"><span>♥ ${p.likes_count || 0}</span><span>💬 ${p.comments_count || 0}</span></span>
     </a>`;
 };
 
