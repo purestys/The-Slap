@@ -419,3 +419,16 @@ img { content-visibility:auto; }
 
 .sensitive-cover { min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:24px; text-align:center; color:var(--text); background:var(--soft); border:1px solid var(--line); border-radius:var(--r); }
 .sensitive-cover span { max-width:360px; color:var(--muted); font-size:13px; }
+
+/* Vídeos nas publicações */
+.post-video-wrap { width:100%; overflow:hidden; background:#000; border-radius:var(--r-sm); }
+.post-video-wrap video { display:block; width:100%; max-height:75vh; background:#000; object-fit:contain; }
+.video-preview { display:flex; flex-direction:column; gap:8px; margin:10px 0 16px; }
+.video-preview video { display:block; width:100%; max-height:420px; border-radius:10px; background:#000; }
+.video-drop { margin-top:10px; }
+.video-drop[hidden] { display:none !important; }
+.post-page .post-video-wrap { border:1px solid var(--line); }
+@media (max-width:760px) {
+  .post-video-wrap video { max-height:58vh; }
+  .video-preview video { max-height:55vh; }
+}
