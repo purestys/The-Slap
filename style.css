@@ -432,3 +432,56 @@ img { content-visibility:auto; }
   .post-video-wrap video { max-height:58vh; }
   .video-preview video { max-height:55vh; }
 }
+
+
+/* Perfil: layout isolado para evitar conflitos com a grade global e o tema retrô */
+.profile-page { width:100%; min-width:0; }
+.profile-page .profile-head {
+  display:flex; align-items:center; gap:clamp(16px, 4vw, 34px);
+  width:100%; min-width:0; margin:0 0 22px; padding:clamp(16px, 3vw, 28px);
+  color:#071c5b; background:linear-gradient(145deg,#fdfefe 0%,#e4efff 100%);
+  border:2px solid #8fcaff; border-radius:12px; box-shadow:0 3px 0 #03102e,0 0 0 1px #164d9c;
+}
+.profile-avatar { flex:0 0 auto; display:grid; place-items:center; }
+.profile-page .profile-avatar .avatar.xl { width:clamp(88px, 13vw, 132px); height:clamp(88px, 13vw, 132px); border:3px solid #fff; outline:2px solid #6b9bd5; }
+.profile-page .profile-info { flex:1 1 260px; min-width:0; }
+.profile-page .profile-top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 8px; }
+.profile-title { min-width:0; }
+.profile-title h1 { overflow-wrap:anywhere; color:#071c5b; }
+.profile-handle { display:block; margin-top:2px; color:#53658d; font-size:13px; font-weight:600; }
+.profile-page .stats { display:flex; flex-wrap:wrap; gap:8px 22px; margin:14px 0 10px; color:#17377b; }
+.profile-page .stats span, .profile-page .stats a { white-space:nowrap; }
+.profile-page .stats a { color:#07388e; text-decoration:none; }
+.profile-page .stats a:hover { text-decoration:underline; }
+.profile-page .bio { max-width:720px; color:#263f75; overflow-wrap:anywhere; }
+.profile-posts { min-width:0; }
+.profile-section-head { display:flex; align-items:center; gap:10px; margin:0 0 10px; padding:0 2px; color:#fff; }
+.profile-section-head h2 { color:inherit; }
+.profile-section-head span { padding:2px 8px; border:1px solid #75baff; border-radius:99px; background:#0d3986; color:#fff; font-size:12px; font-weight:700; }
+.profile-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; width:100%; min-width:0; }
+.profile-grid .profile-post-tile { position:relative; display:block; min-width:0; aspect-ratio:1; margin:0; overflow:hidden; border:2px solid #8fcaff; border-radius:8px; background:#071b51; text-decoration:none; box-shadow:0 2px 0 #03102e; }
+.profile-grid .profile-post-tile > img, .profile-grid .profile-post-tile > video { display:block; width:100%; height:100%; min-height:0; max-height:none; object-fit:cover; }
+.profile-grid .profile-post-tile.is-video { background:#020817; }
+.profile-video-mark { position:absolute; top:10px; right:10px; display:grid; place-items:center; width:30px; height:30px; border:1px solid #ffffffaa; border-radius:50%; background:#06143ccc; color:#fff; font-size:12px; box-shadow:0 1px 5px #0008; }
+.profile-grid .profile-post-tile.is-sensitive { display:grid; place-items:center; padding:12px; background:#cbdcff; }
+.profile-sensitive { color:#17377b; font-size:13px; font-weight:800; text-align:center; }
+.profile-grid .g-over { opacity:0; }
+.profile-grid .profile-post-tile:hover .g-over, .profile-grid .profile-post-tile:focus-visible .g-over { opacity:1; }
+.profile-page .private-notice { margin-top:12px; }
+@media (max-width:760px) {
+  .profile-page .profile-head { align-items:flex-start; gap:14px; padding:14px; margin-bottom:18px; }
+  .profile-page .profile-top { align-items:flex-start; }
+  .profile-page .profile-top .btn { flex:none; }
+  .profile-page .stats { gap:6px 14px; margin:10px 0; font-size:13px; }
+  .profile-grid { gap:4px; }
+  .profile-grid .profile-post-tile { border-width:1px; border-radius:5px; }
+}
+@media (max-width:420px) {
+  .profile-page .profile-head { gap:12px; padding:12px; }
+  .profile-page .profile-avatar .avatar.xl { width:72px; height:72px; }
+  .profile-page .profile-top { gap:8px; }
+  .profile-page .profile-title h1 { font-size:18px; }
+  .profile-page .profile-top .btn { padding:6px 9px; font-size:12px; }
+  .profile-page .stats { gap:5px 10px; font-size:12px; }
+  .profile-section-head { margin-bottom:8px; }
+}
