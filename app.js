@@ -32,10 +32,10 @@ function buildShell(kind) {
   mount($('#app'), html`
     <div class="shell">
       <header class="topbar">
-        <a class="logo" href="#/">${icon('logo')}<span>TheClick</span></a>
+        <a class="logo" href="#/">${icon('logo')}<span>The Slap</span></a>
       </header>
       <aside class="sidebar">
-        <a class="logo" href="#/">${icon('logo')}<span>TheClick</span></a>
+        <a class="logo" href="#/">${icon('logo')}<span>The Slap</span></a>
         <nav class="nav" aria-label="Principal">
           ${nav.map(([href, ic, label]) => html`
             <a href="#${href}" data-route="${href}" aria-label="${label}">${icon(ic)}<span class="label">${label}</span>
@@ -101,7 +101,7 @@ function setupScreen(title, text) {
   initTheme();
   mount($('#app'), html`
     <div class="auth-wrap"><main id="main"><div class="card auth-card">
-      <div class="logo">${icon('logo')}<span>TheClick</span></div>
+      <div class="logo">${icon('logo')}<span>The Slap</span></div>
       <h1>${title}</h1>
       <p class="sub">${text}</p>
     </div></main></div>`);
