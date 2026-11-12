@@ -400,13 +400,12 @@ export async function profile(el, { params }) {
   const mine = u.id === state.me.id;
   const locked = !!u.is_private && !mine && !u.is_following;
   mount(el, html`
-    <div class="col-wide">
-      <header class="profile-head">
-        ${avatar(u, 'xl')}
+    <div class="col-wide profile-page">
+      <header class="profile-head card">
+        <div class="profile-avatar">${avatar(u, 'xl')}</div>
         <div class="profile-info">
-          <div class="profile-top"><h1>${u.name}</h1>
+          <div class="profile-top"><div class="profile-title"><h1>${u.name}</h1><span class="profile-handle">@${u.username}</span></div>
             ${mine ? html`<a class="btn ghost sm" href="#/settings">Editar perfil</a>` : followBtn(u.username, u.is_following)}</div>
-          <div class="muted">@${u.username}</div>
           <div class="stats">
             <span><b>${u.posts_count}</b> publicações</span>
             <a href="#/u/${u.username}/followers"><b data-followers-of="${u.username}">${u.followers_count}</b> seguidores</a>
@@ -415,7 +414,7 @@ export async function profile(el, { params }) {
           ${u.bio ? html`<p class="bio">${u.bio}</p>` : ''}
         </div>
       </header>
-      ${locked ? html`<div class="card empty private-notice"><h3>Este perfil é privado</h3><p>Somente seguidores podem ver as publicações.</p></div>` : html`<div class="grid" id="list"></div>`}
+      ${locked ? html`<div class="card empty private-notice"><h3>Este perfil é privado</h3><p>Somente seguidores podem ver as publicações.</p></div>` : html`<section class="profile-posts" aria-label="Publicações do perfil"><div class="profile-section-head"><h2>Publicações</h2><span>${u.posts_count}</span></div><div class="profile-grid" id="list"></div></section>`}
       <div class="card empty" id="empty" hidden>
         <h3>${mine ? 'Você ainda não publicou' : 'Nenhuma publicação ainda'}</h3>
         ${mine ? html`<p>Compartilhe sua primeira fotografia com a comunidade.</p><a class="btn" href="#/new">Publicar fotografia</a>` : ''}
