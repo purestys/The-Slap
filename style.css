@@ -355,3 +355,44 @@ h1 {font-size:22px;} h2 {font-size:17px;} h3 {font-size:15px;}
   .page-head { align-items:flex-start; }
   .post,.profile-card,.settings-card,.form-card,.empty,.auth-card { padding:11px; }
 }
+
+/* Ajustes de usabilidade em celulares */
+.mood {
+  display: inline-flex; align-items: center; width: fit-content;
+  margin: 0 0 8px; padding: 4px 10px; border-radius: 999px;
+  color: #07509b; background: #e5f2ff; border: 1px solid #a8d2fa;
+  font-size: 12px; font-weight: 700;
+}
+.settings-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.settings-actions .h-sp { margin: 0; }
+@media (max-width: 760px) {
+  .shell { display: block; width: 100%; min-height: 100vh; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .sidebar {
+    position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; top: auto;
+    min-height: 0; height: auto; padding: 7px max(8px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    border: 0; border-top: 1px solid #6da9e8; border-radius: 14px 14px 0 0;
+    background: linear-gradient(180deg, #0d3986, #061b51); box-shadow: 0 -4px 18px #00163d55;
+  }
+  .sidebar > .logo, .side-foot { display: none !important; }
+  .nav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+  .nav a { min-width: 0; min-height: 49px; padding: 5px 2px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; font-size: 9px; text-transform: none; }
+  .nav a .ic { width: 19px; height: 19px; }
+  .nav a .label { display: block; overflow: hidden; max-width: 100%; color: inherit; white-space: nowrap; text-overflow: ellipsis; }
+  .nav a:hover, .nav a.active { background: #ffffff25; }
+  main#main { padding: 12px 10px calc(82px + env(safe-area-inset-bottom)); }
+  .page-head { margin-bottom: 12px; }
+  .post, .profile-card, .settings-card, .form-card, .empty { padding: 12px; }
+  .post-img { margin: 8px 0; }
+  .post-img img { max-height: 65vh; }
+  .post-actions { gap: 8px; }
+  .post-actions .act { min-height: 40px; min-width: 44px; justify-content: center; }
+  .field input, .field textarea, .field select, input, textarea, select { font-size: 16px; }
+  .drop { min-height: 150px; }
+  .post-page { display: flex; flex-direction: column; gap: 10px; }
+  .post-page .media img { max-height: 65vh; object-fit: contain; }
+}
+@media (max-width: 380px) {
+  .nav a { font-size: 8px; }
+  .nav a .ic { width: 17px; height: 17px; }
+  main#main { padding-left: 8px; padding-right: 8px; }
+}
