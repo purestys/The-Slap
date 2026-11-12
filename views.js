@@ -203,25 +203,53 @@ export function newPost(el) {
       <div class="page-head"><h1>Publicar fotografia</h1></div>
       <form class="card pad" id="f" enctype="multipart/form-data">${errBox}
         <label class="drop" id="drop">
-          <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
-          <span id="drop-empty">${icon('image')}<strong>Escolher fotografia (opcional)</strong><br><span class="hint">JPG, PNG, WEBP ou GIF · você também pode publicar só texto</span></span>
-          <img id="preview" alt="Prévia da fotografia" hidden>
+          <input type="file" name="images" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+          <span id="drop-empty">${icon('image')}<strong>Escolher até 4 fotografias (opcional)</strong><br><span class="hint">JPG, PNG, WEBP ou GIF · você também pode publicar só texto</span></span>
         </label>
-        <small class="err" data-err="image"></small>
+        <div class="image-previews" id="image-previews"></div>
+        <small class="err" data-err="images"></small>
         ${field('title', 'Título', { attrs: 'required maxlength="100"' })}
         ${textarea('caption', 'Legenda', { attrs: 'maxlength="2000" placeholder="Conte a história por trás do clique"' })}
+        <label class="check"><input type="checkbox" name="is_sensitive"> Esta publicação contém mídia sensível</label>
         <label class="field"><span>Mood</span><select name="mood"><option value="">Sem mood</option><option>Feliz</option><option>Animado(a)</option><option>Triste</option><option>Pensativo(a)</option><option>Grato(a)</option><option>Com saudade</option><option>Inspirado(a)</option><option>Tranquilo(a)</option><option>Cansado(a)</option></select></label>
         ${field('tags', 'Hashtags', { attrs: 'placeholder="#paisagem #pordosol"' })}
         <button class="btn block" type="submit">Publicar</button>
       </form>
     </div>`);
   const form = $('#f', el);
-  bindImagePicker(form.elements.image, (url) => {
-    $('#preview', el).src = url; $('#preview', el).hidden = false; $('#drop-empty', el).hidden = true;
+  const imageInput = form.elements.images;
+  let selectedImages = [];
+  const previewBox = $('#image-previews', el);
+  let previewUrls = [];
+  const renderPreviews = () => {
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls = selectedImages.map((file) => URL.createObjectURL(file));
+    previewBox.innerHTML = selectedImages.map((file, index) => `<div class="image-preview"><img src="${previewUrls[index]}" alt="Prévia ${index + 1}" loading="lazy"><button type="button" class="remove-preview" data-remove-image="${index}" aria-label="Remover foto">×</button></div>`).join('');
+    $('#drop-empty', el).hidden = selectedImages.length > 0;
+  };
+  imageInput.addEventListener('change', () => {
+    const incoming = [...imageInput.files];
+    if (selectedImages.length + incoming.length > 4) {
+      toast('Você pode publicar no máximo 4 fotos por vez.', 'error');
+      imageInput.value = '';
+      return;
+    }
+    for (const file of incoming) {
+      if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { toast('Formato inválido. Use JPG, PNG, WEBP ou GIF.', 'error'); continue; }
+      selectedImages.push(file);
+    }
+    imageInput.value = '';
+    renderPreviews();
+  });
+  previewBox.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-remove-image]');
+    if (!button) return;
+    selectedImages.splice(Number(button.dataset.removeImage), 1);
+    renderPreviews();
   });
   bindForm(form, async (fd) => {
     const id = await API.posts.create({
-      file: fd.get('image'), title: fd.get('title'), caption: fd.get('caption'), tags: fd.get('tags'), mood: fd.get('mood'),
+      files: selectedImages, title: fd.get('title'), caption: fd.get('caption'), tags: fd.get('tags'), mood: fd.get('mood'), is_sensitive: fd.get('is_sensitive') === 'on',
     }, state.me.id);
     toast('Publicado!');
     go(`#/post/${id}`);
@@ -257,7 +285,7 @@ export async function postPage(el, ctx) {
   const mine = p.user_id === state.me.id;
   mount(el, html`
     <div class="col-wide post-page">
-      ${p.image_url ? html`<div class="media"><img src="${p.image_url}" alt="${p.title}"></div>` : ''}
+      ${(p.image_urls?.length ? p.image_urls : (p.image_url ? [p.image_url] : [])).length ? (p.is_sensitive && !state.me?.show_sensitive_media ? html`<div class="sensitive-cover"><b>Mídia sensível</b><span>Ative a exibição nas configurações para visualizar esta mídia.</span></div>` : html`<div class="media media-gallery">${(p.image_urls?.length ? p.image_urls : [p.image_url]).slice(0,4).map((url) => html`<img src="${url}" alt="${p.title}" loading="lazy" decoding="async">`)}</div>`) : ''}
       <aside class="card side-panel">
         <div class="post-head">
           <a href="#/u/${p.username}">${avatar(p)}</a>
@@ -324,6 +352,7 @@ export async function profile(el, { params }) {
   const username = params[0];
   const u = await API.profile.get(username);
   const mine = u.id === state.me.id;
+  const locked = !!u.is_private && !mine && !u.is_following;
   mount(el, html`
     <div class="col-wide">
       <header class="profile-head">
@@ -340,19 +369,21 @@ export async function profile(el, { params }) {
           ${u.bio ? html`<p class="bio">${u.bio}</p>` : ''}
         </div>
       </header>
-      <div class="grid" id="list"></div>
+      ${locked ? html`<div class="card empty private-notice"><h3>Este perfil é privado</h3><p>Somente seguidores podem ver as publicações.</p></div>` : html`<div class="grid" id="list"></div>`}
       <div class="card empty" id="empty" hidden>
         <h3>${mine ? 'Você ainda não publicou' : 'Nenhuma publicação ainda'}</h3>
         ${mine ? html`<p>Compartilhe sua primeira fotografia com a comunidade.</p><a class="btn" href="#/new">Publicar fotografia</a>` : ''}
       </div>
       ${loadMore}
     </div>`);
-  const r = await paged({
-    list: $('#list', el), more: $('#more', el),
-    fetchPage: (p) => API.profile.posts(username, u.id, p),
-    render: (items) => items.map(galleryItem),
-  });
-  $('#empty', el).hidden = r.items.length > 0;
+  if (!locked) {
+    const r = await paged({
+      list: $('#list', el), more: $('#more', el),
+      fetchPage: (p) => API.profile.posts(username, u.id, p),
+      render: (items) => items.map(galleryItem),
+    });
+    $('#empty', el).hidden = r.items.length > 0;
+  } else { $('#empty', el).hidden = true; $('#more', el).hidden = true; }
 }
 
 export async function followList(el, { params }) {
@@ -426,6 +457,15 @@ export function settings(el) {
         ${field('new_password', 'Nova senha (mín. 8 caracteres)', { type: 'password', attrs: 'required minlength="8" autocomplete="new-password"' })}
         <button class="btn" type="submit">Alterar senha</button>
       </form>
+      <form class="card pad mb" id="privacy-form">
+        <h2 class="h-sp">Privacidade e segurança</h2>
+        <p class="hint">Controle como as pessoas encontram seu perfil e veem suas publicações.</p>
+        <label class="privacy-option"><span><b>Perfil privado</b><small>Somente seguidores podem visualizar suas publicações.</small></span><input type="checkbox" name="is_private" ${me.is_private ? 'checked' : ''}></label>
+        <label class="privacy-option"><span><b>Mostrar meu perfil na busca</b><small>Permite que outras pessoas encontrem seu perfil ao pesquisar no TheClick.</small></span><input type="checkbox" name="show_in_search" ${me.show_in_search !== false ? 'checked' : ''}></label>
+        <label class="privacy-option"><span><b>Exibir mídia sensível</b><small>Permite exibir mídias que possam conter conteúdo sensível sem aviso adicional.</small></span><input type="checkbox" name="show_sensitive_media" ${me.show_sensitive_media ? 'checked' : ''}></label>
+        <label class="privacy-option"><span><b>Receber notificações</b><small>Ativa notificações de curtidas, comentários e novos seguidores.</small></span><input type="checkbox" name="notifications_enabled" ${me.notifications_enabled !== false ? 'checked' : ''}></label>
+        <button class="btn" type="submit">Salvar privacidade</button>
+      </form>
       <div class="card pad mb settings-actions">
         <h2 class="h-sp">Conta</h2>
         <p class="muted">Ao sair, você precisará entrar novamente para acessar seu perfil.</p>
@@ -444,6 +484,17 @@ export function settings(el) {
     state.me = { ...state.me, ...row };
     document.dispatchEvent(new CustomEvent('me:changed'));
     toast('Perfil atualizado.');
+    settings(el);
+  });
+  bindForm($('#privacy-form', el), async (fd) => {
+    const row = await API.profile.savePrivacy({
+      is_private: fd.get('is_private') === 'on',
+      show_in_search: fd.get('show_in_search') === 'on',
+      show_sensitive_media: fd.get('show_sensitive_media') === 'on',
+      notifications_enabled: fd.get('notifications_enabled') === 'on',
+    });
+    state.me = { ...state.me, ...row };
+    toast('Preferências de privacidade salvas.');
     settings(el);
   });
   bindForm($('#pwd', el), async (fd) => {
