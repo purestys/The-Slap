@@ -399,36 +399,62 @@ export async function profile(el, { params }) {
   const u = await API.profile.get(username);
   const mine = u.id === state.me.id;
   const locked = !!u.is_private && !mine && !u.is_following;
+
   mount(el, html`
     <div class="col-wide profile-page">
       <header class="profile-head card">
         <div class="profile-avatar">${avatar(u, 'xl')}</div>
         <div class="profile-info">
-          <div class="profile-top"><div class="profile-title"><h1>${u.name}</h1><span class="profile-handle">@${u.username}</span></div>
-            ${mine ? html`<a class="btn ghost sm" href="#/settings">Editar perfil</a>` : followBtn(u.username, u.is_following)}</div>
-          <div class="stats">
+          <div class="profile-top">
+            <div class="profile-title">
+              <h1>${u.name}</h1>
+              <span class="profile-handle">@${u.username}</span>
+            </div>
+            ${mine ? html`<a class="btn ghost sm" href="#/settings">Editar perfil</a>` : followBtn(u.username, u.is_following)}
+          </div>
+          <div class="stats" aria-label="Estatísticas do perfil">
             <span><b>${u.posts_count}</b> publicações</span>
             <a href="#/u/${u.username}/followers"><b data-followers-of="${u.username}">${u.followers_count}</b> seguidores</a>
             <a href="#/u/${u.username}/following"><b>${u.following_count}</b> seguindo</a>
           </div>
-          ${u.bio ? html`<p class="bio">${u.bio}</p>` : ''}
+          ${u.bio ? html`<p class="bio">${u.bio}</p>` : html`<p class="bio profile-bio-empty">Este usuário ainda não adicionou uma biografia.</p>`}
         </div>
       </header>
-      ${locked ? html`<div class="card empty private-notice"><h3>Este perfil é privado</h3><p>Somente seguidores podem ver as publicações.</p></div>` : html`<section class="profile-posts" aria-label="Publicações do perfil"><div class="profile-section-head"><h2>Publicações</h2><span>${u.posts_count}</span></div><div class="profile-grid" id="list"></div></section>`}
-      <div class="card empty" id="empty" hidden>
-        <h3>${mine ? 'Você ainda não publicou' : 'Nenhuma publicação ainda'}</h3>
-        ${mine ? html`<p>Compartilhe sua primeira fotografia com a comunidade.</p><a class="btn" href="#/new">Publicar fotografia</a>` : ''}
-      </div>
-      ${loadMore}
+
+      ${locked ? html`
+        <section class="profile-posts card">
+          <div class="profile-private">
+            <div class="profile-private-icon">🔒</div>
+            <h2>Este perfil é privado</h2>
+            <p>Comece a seguir esta pessoa para ver as publicações.</p>
+          </div>
+        </section>
+      ` : html`
+        <section class="profile-posts card" aria-label="Publicações do perfil">
+          <div class="profile-section-head">
+            <h2>Publicações</h2>
+            <span>${u.posts_count}</span>
+          </div>
+          <div class="profile-grid" id="list"></div>
+          <div class="empty profile-empty" id="empty" hidden>
+            <div class="profile-empty-icon">▧</div>
+            <h3>${mine ? 'Você ainda não publicou' : 'Nenhuma publicação ainda'}</h3>
+            ${mine ? html`<p>Quando você publicar uma foto ou vídeo, ele aparecerá aqui.</p><a class="btn" href="#/new">Criar publicação</a>` : html`<p>As publicações desta pessoa aparecerão aqui.</p>`}
+          </div>
+          ${loadMore}
+        </section>
+      `}
     </div>`);
+
   if (!locked) {
     const r = await paged({
-      list: $('#list', el), more: $('#more', el),
+      list: $('#list', el),
+      more: $('#more', el),
       fetchPage: (p) => API.profile.posts(username, u.id, p),
       render: (items) => items.map(galleryItem),
     });
     $('#empty', el).hidden = r.items.length > 0;
-  } else { $('#empty', el).hidden = true; $('#more', el).hidden = true; }
+  }
 }
 
 export async function followList(el, { params }) {
