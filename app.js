@@ -3,7 +3,7 @@ import { isConfigured, isRecovery, loadError } from './supabase.js';
 import { state } from './state.js';
 import { $, $$, html, mount, icon, go, toast } from './util.js';
 import { initActions } from './components.js';
-import { initTheme, toggleTheme, currentTheme } from './theme.js';
+import { initTheme } from './theme.js';
 import * as V from './views.js';
 
 const routes = [
@@ -33,7 +33,6 @@ function buildShell(kind) {
     <div class="shell">
       <header class="topbar">
         <a class="logo" href="#/">${icon('logo')}<span>TheClick</span></a>
-        <button class="icon-btn" data-action="toggle-theme" aria-label="Alternar modo claro/escuro">${icon('moon')}</button>
       </header>
       <aside class="sidebar">
         <a class="logo" href="#/">${icon('logo')}<span>TheClick</span></a>
@@ -43,18 +42,11 @@ function buildShell(kind) {
               ${ic === 'bell' ? html`<span class="badge" data-badge hidden>0</span>` : ''}</a>`)}
         </nav>
         <div class="side-foot">
-          <button class="side-btn" data-action="toggle-theme">${icon('moon')}<span class="label" data-theme-label></span></button>
-          <button class="side-btn" data-action="logout">${icon('logout')}<span class="label">Sair</span></button>
         </div>
       </aside>
       <main id="main"></main>
     </div>`);
-  syncThemeLabel();
   V.refreshBadge();
-}
-
-function syncThemeLabel() {
-  $$('[data-theme-label]').forEach((el) => { el.textContent = currentTheme() === 'dark' ? 'Modo claro' : 'Modo escuro'; });
 }
 
 function setActive(path) {
@@ -93,13 +85,10 @@ async function route() {
 }
 
 document.addEventListener('click', async (e) => {
-  const el = e.target.closest('[data-action="toggle-theme"], [data-action="logout"]');
+  const el = e.target.closest('[data-action="logout"]');
   if (!el) return;
-  if (el.dataset.action === 'toggle-theme') {
-    toggleTheme();
-    syncThemeLabel();
-  } else {
-    await auth.logout(); // o evento SIGNED_OUT (abaixo) limpa o estado e leva ao login
+  if (window.confirm('Deseja realmente sair da conta?')) {
+    await auth.logout(); // o evento SIGNED_OUT limpa o estado e leva ao login
   }
 });
 
