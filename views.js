@@ -200,13 +200,19 @@ export async function explore(el, { query }) {
 export function newPost(el) {
   mount(el, html`
     <div class="col">
-      <div class="page-head"><h1>Publicar fotografia</h1></div>
+      <div class="page-head"><h1>Criar publicação</h1></div>
       <form class="card pad" id="f" enctype="multipart/form-data">${errBox}
         <label class="drop" id="drop">
           <input type="file" name="images" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
-          <span id="drop-empty">${icon('image')}<strong>Escolher até 4 fotografias (opcional)</strong><br><span class="hint">JPG, PNG, WEBP ou GIF · você também pode publicar só texto</span></span>
+          <span id="drop-empty">${icon('image')}<strong>Escolher até 4 fotos (opcional)</strong><br><span class="hint">JPG, PNG, WEBP ou GIF</span></span>
         </label>
         <div class="image-previews" id="image-previews"></div>
+        <label class="drop video-drop" id="video-drop">
+          <input type="file" name="video" accept="video/mp4,video/webm,video/ogg">
+          <span id="video-empty">${icon('video')}<strong>Ou escolha 1 vídeo</strong><br><span class="hint">MP4, WEBM ou OGG · você também pode publicar só texto</span></span>
+        </label>
+        <div id="video-preview" class="video-preview" hidden></div>
+        <small class="err" data-err="video"></small>
         <small class="err" data-err="images"></small>
         ${field('title', 'Título', { attrs: 'required maxlength="100"' })}
         ${textarea('caption', 'Legenda', { attrs: 'maxlength="2000" placeholder="Conte a história por trás do clique"' })}
@@ -218,17 +224,37 @@ export function newPost(el) {
     </div>`);
   const form = $('#f', el);
   const imageInput = form.elements.images;
+  const videoInput = form.elements.video;
   let selectedImages = [];
+  let selectedVideo = null;
   const previewBox = $('#image-previews', el);
+  const videoPreview = $('#video-preview', el);
   let previewUrls = [];
+  let videoPreviewUrl = null;
   const renderPreviews = () => {
     previewUrls.forEach((url) => URL.revokeObjectURL(url));
     previewUrls = selectedImages.map((file) => URL.createObjectURL(file));
     previewBox.innerHTML = selectedImages.map((file, index) => `<div class="image-preview"><img src="${previewUrls[index]}" alt="Prévia ${index + 1}" loading="lazy"><button type="button" class="remove-preview" data-remove-image="${index}" aria-label="Remover foto">×</button></div>`).join('');
-    $('#drop-empty', el).hidden = selectedImages.length > 0;
+    $('#drop-empty', el).hidden = selectedImages.length > 0 || !!selectedVideo;
+    $('#video-drop', el).hidden = selectedImages.length > 0;
+  };
+  const renderVideoPreview = () => {
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    videoPreviewUrl = selectedVideo ? URL.createObjectURL(selectedVideo) : null;
+    videoPreview.innerHTML = selectedVideo
+      ? `<video controls playsinline preload="metadata" src="${videoPreviewUrl}"></video><button type="button" class="btn ghost sm" data-remove-video>Remover vídeo</button>`
+      : '';
+    videoPreview.hidden = !selectedVideo;
+    $('#drop-empty', el).hidden = selectedImages.length > 0 || !!selectedVideo;
+    $('#video-drop', el).hidden = selectedImages.length > 0;
   };
   imageInput.addEventListener('change', () => {
     const incoming = [...imageInput.files];
+    if (selectedVideo) {
+      toast('Escolha fotos ou um vídeo por publicação, não os dois juntos.', 'error');
+      imageInput.value = '';
+      return;
+    }
     if (selectedImages.length + incoming.length > 4) {
       toast('Você pode publicar no máximo 4 fotos por vez.', 'error');
       imageInput.value = '';
@@ -241,15 +267,35 @@ export function newPost(el) {
     imageInput.value = '';
     renderPreviews();
   });
+  videoInput.addEventListener('change', () => {
+    const file = videoInput.files?.[0];
+    videoInput.value = '';
+    if (!file) return;
+    if (selectedImages.length) {
+      toast('Escolha fotos ou um vídeo por publicação, não os dois juntos.', 'error');
+      return;
+    }
+    if (!/^video\/(mp4|webm|ogg)$/.test(file.type)) {
+      toast('Formato inválido. Use MP4, WEBM ou OGG.', 'error');
+      return;
+    }
+    selectedVideo = file;
+    renderVideoPreview();
+  });
   previewBox.addEventListener('click', (event) => {
     const button = event.target.closest('[data-remove-image]');
     if (!button) return;
     selectedImages.splice(Number(button.dataset.removeImage), 1);
     renderPreviews();
   });
+  videoPreview.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-remove-video]')) return;
+    selectedVideo = null;
+    renderVideoPreview();
+  });
   bindForm(form, async (fd) => {
     const id = await API.posts.create({
-      files: selectedImages, title: fd.get('title'), caption: fd.get('caption'), tags: fd.get('tags'), mood: fd.get('mood'), is_sensitive: fd.get('is_sensitive') === 'on',
+      files: selectedImages, video: selectedVideo, title: fd.get('title'), caption: fd.get('caption'), tags: fd.get('tags'), mood: fd.get('mood'), is_sensitive: fd.get('is_sensitive') === 'on',
     }, state.me.id);
     toast('Publicado!');
     go(`#/post/${id}`);
@@ -285,7 +331,7 @@ export async function postPage(el, ctx) {
   const mine = p.user_id === state.me.id;
   mount(el, html`
     <div class="col-wide post-page">
-      ${(p.image_urls?.length ? p.image_urls : (p.image_url ? [p.image_url] : [])).length ? (p.is_sensitive && !state.me?.show_sensitive_media ? html`<div class="sensitive-cover"><b>Mídia sensível</b><span>Ative a exibição nas configurações para visualizar esta mídia.</span></div>` : html`<div class="media media-gallery">${(p.image_urls?.length ? p.image_urls : [p.image_url]).slice(0,4).map((url) => html`<img src="${url}" alt="${p.title}" loading="lazy" decoding="async">`)}</div>`) : ''}
+      ${(p.image_urls?.length || p.video_url) ? (p.is_sensitive && !state.me?.show_sensitive_media ? html`<div class="sensitive-cover"><b>Mídia sensível</b><span>Ative a exibição nas configurações para visualizar esta mídia.</span></div>` : (p.video_url ? html`<div class="media post-video-wrap"><video src="${p.video_url}" controls playsinline preload="metadata"></video></div>` : html`<div class="media media-gallery">${(p.image_urls?.length ? p.image_urls : [p.image_url]).slice(0,4).map((url) => html`<img src="${url}" alt="${p.title}" loading="lazy" decoding="async">`)}</div>`)) : ''}
       <aside class="card side-panel">
         <div class="post-head">
           <a href="#/u/${p.username}">${avatar(p)}</a>
