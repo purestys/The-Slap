@@ -1,4 +1,4 @@
-/* TheClick — tema claro e escuro */
+/* The Slap — tema claro e escuro */
 :root {
   --bg: #F2F7FC; --card: #FFFFFF; --soft: #E1ECF7; --accent: #4299E1; --ink-on-accent: #071426;
   --text: #10243D; --muted: #64748B; --line: #D3E1F0; --danger: #C0392B;
@@ -209,7 +209,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .owner { margin-left: auto; display: flex; gap: 12px; }
 
 /* ==========================================================
-   THECLICK RETRÔ 2000s — camada visual aplicada ao HTML atual
+   THE SLAP RETRÔ 2000s — camada visual aplicada ao HTML atual
    Mantém as classes e os componentes originais do projeto.
    ========================================================== */
 :root {
